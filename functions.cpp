@@ -8,11 +8,11 @@ int inputDegree() {
         cin >> n;
 
         if (cin.fail() || n < 0) {
-            cout << "Ошибка! Введите неотрицательное число (n >= 0): ";
-            cin.clear(); // Сброс флага ошибки
-            cin.ignore(10000, '\n'); // Очистка ввода
+            cout << "Ошибка! Введите неотрицательное целое число (n >= 0): ";
+            cin.clear();
+            cin.ignore(10000, '\n');
         } else {
-            return n; // Корректное значение
+            return n;
         }
     }
 }
@@ -26,7 +26,7 @@ void inputCoefficients(string* coefficients, int n) {
         cin >> coefficients[i];
         // Проверка, что введено корректное число
         for (char c : coefficients[i]) {
-            if (!isdigit(c) && c != '-') {
+            if (!isdigit(c) && c != '-' && c != '+') {
                 cout << "Ошибка! Коэффициент должен быть целым числом. Повторите ввод." << endl;
                 --i; // Повторяем ввод для текущего коэффициента
                 break;
@@ -35,72 +35,61 @@ void inputCoefficients(string* coefficients, int n) {
     }
 }
 
-// Функция для умножения большого числа на маленькое число (для x^k)
-string multiplyBigInt(const string& num, int x) {
-    if (x == 0) return "0";
-
-    int carry = 0;
-    string result = "";
-
-    for (int i = num.size() - 1; i >= 0; --i) {
-        int digit = num[i] - '0';
-        int product = digit * x + carry;
-        result = char((product % 10) + '0') + result;
-        carry = product / 10;
-    }
-
-    if (carry > 0) {
-        result = to_string(carry) + result;
-    }
-
-    return result;
+// Функция для удаления ведущих нулей из числа
+string removeLeadingZeros(const string& num) {
+    size_t startpos = num.find_first_not_of("0");
+    if (startpos == string::npos) return "0";
+    return num.substr(startpos);
 }
 
-// Функция для сложения двух больших чисел
-string addBigInt(const string& num1, const string& num2) {
-    string result = "";
-    int carry = 0;
-
-    int i = num1.size() - 1;
-    int j = num2.size() - 1;
-
-    while (i >= 0 || j >= 0 || carry > 0) {
-        int digit1 = (i >= 0) ? (num1[i] - '0') : 0;
-        int digit2 = (j >= 0) ? (num2[j] - '0') : 0;
-
-        int sum = digit1 + digit2 + carry;
-        result = char((sum % 10) + '0') + result;
-        carry = sum / 10;
-
-        --i;
-        --j;
-    }
-
-    return result;
-}
-
-// Функция для умножения строки числа на строку числа
+// Функция для умножения двух больших чисел в строковом представлении
 string multiplyBigIntString(const string& num1, const string& num2) {
-    int len1 = num1.size();
-    int len2 = num2.size();
+    bool isNegative = (num1[0] == '-' ? 1 : 0) ^ (num2[0] == '-' ? 1 : 0);
+    string n1 = (num1[0] == '-' ? num1.substr(1) : num1);
+    string n2 = (num2[0] == '-' ? num2.substr(1) : num2);
+
+    int len1 = n1.size();
+    int len2 = n2.size();
     string result(len1 + len2, '0');
 
     for (int i = len1 - 1; i >= 0; --i) {
         int carry = 0;
         for (int j = len2 - 1; j >= 0; --j) {
-            int temp = (result[i + j + 1] - '0') + (num1[i] - '0') * (num2[j] - '0') + carry;
+            int temp = (result[i + j + 1] - '0') + (n1[i] - '0') * (n2[j] - '0') + carry;
             result[i + j + 1] = (temp % 10) + '0';
             carry = temp / 10;
         }
         result[i] += carry;
     }
 
-    // Удаляем ведущие нули
-    size_t startpos = result.find_first_not_of("0");
-    if (startpos != string::npos) {
-        return result.substr(startpos);
+    result = removeLeadingZeros(result);
+    return isNegative && result != "0" ? "-" + result : result;
+}
+
+// Функция для сложения двух больших чисел
+string addBigInt(const string& num1, const string& num2) {
+    if (num1[0] == '-' && num2[0] == '-') {
+        return "-" + addBigInt(num1.substr(1), num2.substr(1));
+    } else if (num1[0] == '-') {
+        return addBigInt(num2, "-" + num1.substr(1));
+    } else if (num2[0] == '-') {
+        return addBigInt(num1, "-" + num2.substr(1));
     }
-    return "0";
+
+    string result = "";
+    int carry = 0;
+    int i = num1.size() - 1, j = num2.size() - 1;
+
+    while (i >= 0 || j >= 0 || carry > 0) {
+        int digit1 = (i >= 0) ? (num1[i--] - '0') : 0;
+        int digit2 = (j >= 0) ? (num2[j--] - '0') : 0;
+
+        int sum = digit1 + digit2 + carry;
+        result = char((sum % 10) + '0') + result;
+        carry = sum / 10;
+    }
+
+    return removeLeadingZeros(result);
 }
 
 // Функция для вычисления значения многочлена
@@ -121,17 +110,26 @@ string evaluatePolynomial(string* coefficients, int n, const string& x) {
 // Функция для вывода многочлена в виде строки
 void printPolynomial(string* coefficients, int n) {
     cout << "Многочлен: ";
+    bool firstTerm = true;
+
     for (int i = 0; i <= n; ++i) {
         if (coefficients[i] == "0") continue;
 
-        if (i > 0 && coefficients[i][0] != '-') {
-            cout << " + ";
-        } else if (coefficients[i][0] == '-') {
-            cout << " - ";
-            cout << coefficients[i].substr(1);
+        if (!firstTerm) {
+            if (coefficients[i][0] != '-') {
+                cout << " + ";
+            } else {
+                cout << " ";
+            }
         }
 
-        if (coefficients[i] != "1" || i == n) {
+        if (coefficients[i] != "1" && coefficients[i] != "-1") {
+            cout << coefficients[i];
+        } else if (coefficients[i] == "-1" && (n - i > 0)) {
+            cout << "-";
+        } else if (coefficients[i] == "1" && (n - i > 0)) {
+            // Пропускаем вывод "1" перед x
+        } else {
             cout << coefficients[i];
         }
 
@@ -141,7 +139,10 @@ void printPolynomial(string* coefficients, int n) {
                 cout << "^(" << n - i << ")";
             }
         }
+
+        firstTerm = false;
     }
+
     cout << endl;
 }
 

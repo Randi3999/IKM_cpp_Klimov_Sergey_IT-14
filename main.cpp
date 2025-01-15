@@ -5,7 +5,13 @@ int main() {
     int n = inputDegree();
 
     // Создание массива для коэффициентов
-    string* coefficients = new string[n + 1];
+    string* coefficients = nullptr;
+    try {
+        coefficients = new string[n + 1];
+    } catch (const bad_alloc&) {
+        cout << "Ошибка: недостаточно памяти для выделения массива коэффициентов." << endl;
+        return 1;
+    }
 
     // Ввод коэффициентов
     inputCoefficients(coefficients, n);
